@@ -1,0 +1,277 @@
+<<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Resume Analyzer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0f1419;
+    margin: 0;
+    padding: 40px 20px;
+    color: #e5e7eb;
+  }
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #161b22;
+    border: 1px solid #262d38;
+    border-radius: 16px;
+    padding: 32px;
+  }
+  h1 {
+    font-size: 26px;
+    margin: 0 0 6px;
+    color: #ffffff;
+  }
+  .subtitle {
+    color: #9ca3af;
+    margin: 0 0 28px;
+    font-size: 14px;
+  }
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .input-box {
+    background: #1a1f26;
+    border: 1px solid #262d38;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .input-box label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #d1d5db;
+    margin-bottom: 8px;
+  }
+  input[type="file"] {
+    width: 100%;
+    font-size: 13px;
+    color: #d1d5db;
+  }
+  textarea {
+    width: 100%;
+    height: 110px;
+    background: #0f1419;
+    border: 1px solid #2d3540;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: #e5e7eb;
+    resize: vertical;
+  }
+  textarea::placeholder { color: #6b7280; }
+  button {
+    background: #2dd4bf;
+    color: #0f1419;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+  }
+  button:hover { background: #14b8a6; }
+  button:disabled { background: #374151; color: #9ca3af; cursor: not-allowed; }
+
+  #results { margin-top: 32px; display: none; }
+
+  .score-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .score-card {
+    background: #1a1f26;
+    border: 1px solid #262d38;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .score-label {
+    font-size: 13px;
+    color: #9ca3af;
+    margin-bottom: 6px;
+  }
+  .score-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #ffffff;
+  }
+  .bar-track {
+    height: 8px;
+    background: #2d3540;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+
+  .skills-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .skills-box h3 {
+    font-size: 13px;
+    color: #d1d5db;
+    margin: 0 0 10px;
+  }
+  .tag {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 0 6px 6px 0;
+  }
+  .tag-good { background: rgba(45, 212, 191, 0.15); color: #2dd4bf; border: 1px solid rgba(45, 212, 191, 0.3); }
+  .tag-bad { background: rgba(248, 113, 113, 0.12); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+
+  .suggestions-box {
+    background: #1a1f26;
+    border: 1px solid #262d38;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .suggestions-box h3 {
+    font-size: 13px;
+    color: #d1d5db;
+    margin: 0 0 10px;
+  }
+  .suggestions-box p {
+    font-size: 14px;
+    margin: 0 0 8px;
+    line-height: 1.5;
+    color: #d1d5db;
+  }
+
+  .loading { text-align: center; color: #9ca3af; margin-top: 20px; display: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>AI Resume Analyzer</h1>
+  <p class="subtitle">Upload your resume and paste a job description to see how well you match.</p>
+
+  <div class="input-row">
+    <div class="input-box">
+      <label>Resume (PDF)</label>
+      <input type="file" id="resumeInput" accept=".pdf">
+    </div>
+    <div class="input-box">
+      <label>Job description</label>
+      <textarea id="jdInput" placeholder="Paste the job description here..."></textarea>
+    </div>
+  </div>
+
+  <button id="analyzeBtn" onclick="analyzeResume()">Analyze</button>
+
+  <p class="loading" id="loadingText">Analyzing...</p>
+
+  <div id="results">
+    <div class="score-row">
+      <div class="score-card">
+        <div class="score-label">Match score</div>
+        <div class="score-value" id="matchScoreText">0%</div>
+        <div class="bar-track"><div class="bar-fill" id="matchScoreBar" style="width:0%; background:#2dd4bf;"></div></div>
+      </div>
+      <div class="score-card">
+        <div class="score-label">ATS score</div>
+        <div class="score-value" id="atsScoreText">0%</div>
+        <div class="bar-track"><div class="bar-fill" id="atsScoreBar" style="width:0%; background:#2dd4bf;"></div></div>
+      </div>
+    </div>
+
+    <div class="skills-row">
+      <div class="skills-box">
+        <h3>Existing skills</h3>
+        <div id="existingSkills"></div>
+      </div>
+      <div class="skills-box">
+        <h3>Missing skills</h3>
+        <div id="missingSkills"></div>
+      </div>
+    </div>
+
+    <div class="suggestions-box">
+      <h3>Suggestions</h3>
+      <div id="suggestionsList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function analyzeResume() {
+  const resumeFile = document.getElementById('resumeInput').files[0];
+  const jobDescription = document.getElementById('jdInput').value;
+
+  if (!resumeFile || !jobDescription.trim()) {
+    alert("Please upload a resume and paste a job description.");
+    return;
+  }
+
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('loadingText').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+
+  const formData = new FormData();
+  formData.append('resume', resumeFile);
+  formData.append('job_description', jobDescription);
+
+  try {
+    const response = await fetch('/analyze', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await response.json();
+    renderResults(data);
+  } catch (error) {
+    alert("Something went wrong: " + error);
+  } finally {
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('loadingText').style.display = 'none';
+  }
+}
+
+function renderResults(data) {
+  document.getElementById('matchScoreText').textContent = data.match_score + '%';
+  document.getElementById('matchScoreBar').style.width = data.match_score + '%';
+  document.getElementById('matchScoreBar').style.background = data.match_score >= 75 ? '#2dd4bf' : data.match_score >= 50 ? '#fbbf24' : '#f87171';
+
+  document.getElementById('atsScoreText').textContent = data.ats_score + '%';
+  document.getElementById('atsScoreBar').style.width = data.ats_score + '%';
+  document.getElementById('atsScoreBar').style.background = data.ats_score >= 75 ? '#2dd4bf' : data.ats_score >= 50 ? '#fbbf24' : '#f87171';
+
+  const existingDiv = document.getElementById('existingSkills');
+  existingDiv.innerHTML = data.existing_skills.length
+    ? data.existing_skills.map(s => `<span class="tag tag-good">${s}</span>`).join('')
+    : '<p style="font-size:13px; color:#6b7280;">None found</p>';
+
+  const missingDiv = document.getElementById('missingSkills');
+  missingDiv.innerHTML = data.missing_skills.length
+    ? data.missing_skills.map(s => `<span class="tag tag-bad">${s}</span>`).join('')
+    : '<p style="font-size:13px; color:#6b7280;">None</p>';
+
+  const suggestionsDiv = document.getElementById('suggestionsList');
+  suggestionsDiv.innerHTML = data.suggestions.map(s => `<p>${s}</p>`).join('');
+
+  document.getElementById('results').style.display = 'block';
+}
+</script>
+
+</body>
+</html>
